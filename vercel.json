@@ -2,24 +2,11 @@
   "version": 2,
   "builds": [
     {
-      "src": "main.py",
-      "use": "@vercel/python",
-      "config": { "maxLambdaSize": "50mb" }
+      "src": "api/main.py",
+      "use": "@vercel/python"
     }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "main.py" }
-  ],
-  "functions": {
-    "main.py": {
-      "memory": 1024,
-      "maxDuration": 60
-    }
-  },
-  "crons": [
-    {
-      "path": "/?command=/cron_tick",
-      "schedule": "* * * * *"
-    }
+    { "src": "/(.*)", "dest": "api/main.py" }
   ]
 }
