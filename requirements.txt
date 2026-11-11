@@ -1,7 +1,5 @@
 requests
-requests[socks]
-configparser
+beautifulsoup4
+phonenumbers
 random-user-agent
 emailtools
-bs4
-phonenumbers
