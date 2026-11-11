@@ -19,9 +19,9 @@ except ImportError:
     def generate(_domain="gmail"):
         return f"user{random.randint(10000, 999999)}@gmail.com"
 
-# =========================================================
-# State Manager
-# =========================================================
+# ফোল্ডার ডিরেক্টরি ঠিক করা (যাতে প্রজেক্ট রুট থেকে ফাইল রিড করতে পারে)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 class TelegramState:
     def __init__(self):
         self.lock = Lock()
@@ -78,9 +78,6 @@ class TelegramState:
 
 state = TelegramState()
 
-# =========================================================
-# Proxy and User-Agent setup
-# =========================================================
 software_names = [SoftwareName.CHROME.value, SoftwareName.FIREFOX.value, SoftwareName.EDGE.value]
 operating_systems = [OperatingSystem.WINDOWS.value, OperatingSystem.LINUX.value, OperatingSystem.MAC.value]
 user_agent_rotator = UserAgent(software_names=software_names, operating_systems=operating_systems, limit=500)
@@ -94,11 +91,8 @@ BASE_HEADERS = {
 TIME_OUT = 10
 PROXIES_TYPES = ('http', 'socks4', 'socks5')
 
-# =========================================================
-# Core Reporting Logic
-# =========================================================
 def load_proxies(proxy_type):
-    filename = f"{proxy_type}_proxies.txt"
+    filename = os.path.join(BASE_DIR, f"{proxy_type}_proxies.txt")
     if not os.path.exists(filename):
         return []
     try:
@@ -138,7 +132,8 @@ def send_report(proxy, proxy_type, username):
             return
 
         try:
-            with open('message.txt', 'r', encoding='utf-8') as f:
+            msg_file = os.path.join(BASE_DIR, 'message.txt')
+            with open(msg_file, 'r', encoding='utf-8') as f:
                 message = random.choice(f.readlines()).strip().replace('{username}', username)
         except:
             message = f"Please investigate {username}"
@@ -188,7 +183,6 @@ def worker_loop(target_username):
             if not proxies:
                 continue
 
-            # প্রতি ব্যাচে ৭০টি রিকোয়েস্ট
             chunked = [proxies[i:i + 70] for i in range(0, len(proxies), 70)]
             for chunk in chunked:
                 if state.stop_event.is_set():
@@ -209,9 +203,6 @@ def worker_loop(target_username):
 
     state.log("Worker loop completely halted.")
 
-# =========================================================
-# নতুন সুন্দর HTML ড্যাশবোর্ড
-# =========================================================
 DASHBOARD_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -221,275 +212,49 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    color: #e2e8f0;
-    min-height: 100vh;
-    padding: 20px;
-  }
-  
+  body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; padding: 20px; }
   .container { max-width: 1400px; margin: 0 auto; }
-  
-  /* Header */
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding: 20px 24px;
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-  }
-  
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  
-  .logo-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
-  }
-  
-  .logo-text {
-    font-size: 20px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #60a5fa, #a78bfa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  
-  .logo-sub {
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 500;
-    letter-spacing: 1px;
-  }
-  
-  .status-badge {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: rgba(15, 23, 42, 0.6);
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    font-size: 13px;
-    font-weight: 500;
-  }
-  
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #64748b;
-    transition: all 0.3s;
-  }
-  
-  .status-dot.active {
-    background: #10b981;
-    box-shadow: 0 0 12px #10b981;
-    animation: pulse 2s infinite;
-  }
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  
-  /* Controls */
-  .controls {
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    padding: 20px 24px;
-    margin-bottom: 20px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-  
-  .input-group {
-    flex: 1;
-    min-width: 280px;
-    position: relative;
-  }
-  
-  .input-group input {
-    width: 100%;
-    padding: 12px 16px 12px 44px;
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 10px;
-    color: #e2e8f0;
-    font-size: 14px;
-    font-family: inherit;
-    transition: all 0.2s;
-  }
-  
-  .input-group input:focus {
-    outline: none;
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  }
-  
-  .input-group::before {
-    content: "@";
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #64748b;
-    font-weight: 600;
-  }
-  
-  button {
-    padding: 12px 24px;
-    border: none;
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .btn-start {
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-  }
-  
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding: 20px 24px; background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.1); }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4); }
+  .logo-text { font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo-sub { font-size: 11px; color: #64748b; font-weight: 500; letter-spacing: 1px; }
+  .status-badge { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: rgba(15, 23, 42, 0.6); border-radius: 999px; border: 1px solid rgba(148, 163, 184, 0.2); font-size: 13px; font-weight: 500; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; transition: all 0.3s; }
+  .status-dot.active { background: #10b981; box-shadow: 0 0 12px #10b981; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .controls { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 16px; padding: 20px 24px; margin-bottom: 20px; border: 1px solid rgba(148, 163, 184, 0.1); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .input-group { flex: 1; min-width: 280px; position: relative; }
+  .input-group input { width: 100%; padding: 12px 16px 12px 44px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; color: #e2e8f0; font-size: 14px; font-family: inherit; transition: all 0.2s; }
+  .input-group input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  .input-group::before { content: "@"; position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #64748b; font-weight: 600; }
+  button { padding: 12px 24px; border: none; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+  .btn-start { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3); }
   .btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
-  
-  .btn-stop {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-  }
-  
+  .btn-stop { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3); }
   .btn-stop:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4); }
-  
-  /* Stats Grid */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  
-  .stat-card {
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    padding: 20px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.2s;
-  }
-  
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+  .stat-card { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 16px; padding: 20px; border: 1px solid rgba(148, 163, 184, 0.1); position: relative; overflow: hidden; transition: transform 0.2s; }
   .stat-card:hover { transform: translateY(-2px); }
-  
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  }
-  
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
   .stat-card.target { --accent: #3b82f6; }
   .stat-card.success { --accent: #10b981; }
   .stat-card.error { --accent: #ef4444; }
   .stat-card.uptime { --accent: #8b5cf6; }
-  
-  .stat-label {
-    font-size: 11px;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  
-  .stat-value {
-    font-size: 28px;
-    font-weight: 700;
-    color: #f1f5f9;
-  }
-  
+  .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: #f1f5f9; }
   .stat-value.target { color: #60a5fa; }
   .stat-value.success { color: #34d399; }
   .stat-value.error { color: #f87171; }
   .stat-value.uptime { color: #a78bfa; }
-  
-  /* Logs */
-  .logs-container {
-    background: rgba(30, 41, 59, 0.6);
-    backdrop-filter: blur(12px);
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.1);
-    overflow: hidden;
-  }
-  
-  .logs-header {
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: rgba(15, 23, 42, 0.4);
-  }
-  
-  .logs-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #cbd5e1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .logs-count {
-    font-size: 11px;
-    padding: 2px 8px;
-    background: rgba(59, 130, 246, 0.2);
-    color: #60a5fa;
-    border-radius: 999px;
-    font-weight: 600;
-  }
-  
-  .logs-body {
-    height: 60vh;
-    overflow-y: auto;
-    padding: 12px 16px;
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 12.5px;
-    line-height: 1.7;
-  }
-  
+  .logs-container { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.1); overflow: hidden; }
+  .logs-header { padding: 16px 20px; border-bottom: 1px solid rgba(148, 163, 184, 0.1); display: flex; justify-content: space-between; align-items: center; background: rgba(15, 23, 42, 0.4); }
+  .logs-title { font-size: 14px; font-weight: 600; color: #cbd5e1; display: flex; align-items: center; gap: 8px; }
+  .logs-count { font-size: 11px; padding: 2px 8px; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border-radius: 999px; font-weight: 600; }
+  .logs-body { height: 60vh; overflow-y: auto; padding: 12px 16px; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 12.5px; line-height: 1.7; }
   .logs-body::-webkit-scrollbar { width: 8px; }
   .logs-body::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
   .logs-body::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 4px; }
-  
   .log-entry { padding: 3px 0; display: flex; gap: 10px; }
   .log-time { color: #64748b; flex-shrink: 0; }
   .log-text { word-break: break-all; }
@@ -497,27 +262,12 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
   .log-text.failed { color: #f87171; }
   .log-text.error { color: #fb923c; }
   .log-text.info { color: #94a3b8; }
-  
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #64748b;
-    font-style: italic;
-  }
-  
-  /* Responsive */
-  @media (max-width: 768px) {
-    .header { padding: 16px; }
-    .controls { padding: 16px; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .stat-value { font-size: 22px; }
-  }
+  .empty-state { text-align: center; padding: 60px 20px; color: #64748b; font-style: italic; }
+  @media (max-width: 768px) { .header { padding: 16px; } .controls { padding: 16px; } .stats-grid { grid-template-columns: repeat(2, 1fr); } .stat-value { font-size: 22px; } }
 </style>
 </head>
 <body>
 <div class="container">
-  
-  <!-- Header -->
   <div class="header">
     <div class="logo">
       <div class="logo-icon">⚡</div>
@@ -532,7 +282,6 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     </div>
   </div>
   
-  <!-- Controls -->
   <div class="controls">
     <div class="input-group">
       <input id="target" placeholder="username or https://t.me/username" />
@@ -541,7 +290,6 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     <button class="btn-stop" id="stopBtn">■ Stop</button>
   </div>
   
-  <!-- Stats -->
   <div class="stats-grid">
     <div class="stat-card target">
       <div class="stat-label">🎯 Target</div>
@@ -561,7 +309,6 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
     </div>
   </div>
   
-  <!-- Logs -->
   <div class="logs-container">
     <div class="logs-header">
       <div class="logs-title">
@@ -573,7 +320,6 @@ DASHBOARD_HTML = r"""<!DOCTYPE html>
       <div class="empty-state">Waiting for activity...</div>
     </div>
   </div>
-  
 </div>
 
 <script>
@@ -585,10 +331,7 @@ logsEl.addEventListener('scroll', () => {
   autoScroll = (logsEl.scrollTop + logsEl.clientHeight >= logsEl.scrollHeight - 20);
 });
 
-function fmtTime(ts) {
-  return new Date(ts * 1000).toLocaleTimeString('en-US', { hour12: false });
-}
-
+function fmtTime(ts) { return new Date(ts * 1000).toLocaleTimeString('en-US', { hour12: false }); }
 function fmtUptime(s) {
   if (s < 60) return s + 's';
   if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
@@ -602,31 +345,22 @@ function applyStats(d) {
   $('vUptime').textContent = fmtUptime(d.uptime_seconds);
   
   const dot = $('statusDot');
-  if (d.running) {
-    dot.classList.add('active');
-  } else {
-    dot.classList.remove('active');
-  }
+  if (d.running) dot.classList.add('active'); else dot.classList.remove('active');
   
   if (d.recent_logs && d.recent_logs.length) {
     if (logsEl.querySelector('.empty-state')) logsEl.innerHTML = '';
-    
     for (const entry of d.recent_logs) {
       if (entry.id <= lastSeq) continue;
       lastSeq = entry.id;
-      
       const div = document.createElement('div');
       div.className = 'log-entry';
-      
       let cls = 'info';
       if (entry.log.startsWith('SUCCESS')) cls = 'success';
       else if (entry.log.startsWith('FAILED')) cls = 'failed';
       else if (entry.log.startsWith('ERROR')) cls = 'error';
-      
       div.innerHTML = `<span class="log-time">[${fmtTime(entry.timestamp)}]</span><span class="log-text ${cls}">${entry.log}</span>`;
       logsEl.appendChild(div);
     }
-    
     $('logsCount').textContent = lastSeq;
     if (autoScroll) logsEl.scrollTop = logsEl.scrollHeight;
   }
@@ -636,14 +370,8 @@ let sse;
 function connectSSE() {
   sse = new EventSource('/?command=/logs&stream=1');
   sse.onopen = () => { $('connState').textContent = 'Live'; $('statusDot').classList.add('active'); };
-  sse.onmessage = (ev) => {
-    try { applyStats(JSON.parse(ev.data)); } catch(e) {}
-  };
-  sse.onerror = () => {
-    $('connState').textContent = 'Reconnecting...';
-    try { sse.close(); } catch(e) {}
-    setTimeout(connectSSE, 3000);
-  };
+  sse.onmessage = (ev) => { try { applyStats(JSON.parse(ev.data)); } catch(e) {} };
+  sse.onerror = () => { $('connState').textContent = 'Reconnecting...'; try { sse.close(); } catch(e) {}; setTimeout(connectSSE, 3000); };
 }
 connectSSE();
 
@@ -655,14 +383,8 @@ $('startBtn').onclick = async () => {
   if (json.status !== 'success') alert(json.message || 'Failed to start');
   else { logsEl.innerHTML = ''; lastSeq = 0; }
 };
-
-$('stopBtn').onclick = async () => {
-  await fetch('/?command=/stop');
-};
-
-$('target').addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') $('startBtn').click();
-});
+$('stopBtn').onclick = async () => { await fetch('/?command=/stop'); };
+$('target').addEventListener('keypress', (e) => { if (e.key === 'Enter') $('startBtn').click(); });
 </script>
 </body>
 </html>
@@ -692,13 +414,11 @@ class handler(BaseHTTPRequestHandler):
         
         command = params.get("command", [""])[0].lower()
         raw_link = params.get("link", [""])[0].strip()
-        
         username = raw_link.split('t.me/')[-1].split('/')[0].lstrip('@') if 't.me/' in raw_link else raw_link.lstrip('@')
 
         if command == "/start":
             if not username:
                 return self._send_json(400, {"status": "error", "message": "Missing link"})
-            
             if not state.reset_for_start(username):
                 return self._send_json(409, {"status": "error", "message": f"Task already running for {state.target}"})
             
